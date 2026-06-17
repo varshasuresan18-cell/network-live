@@ -199,8 +199,7 @@ HTML_TEMPLATE = """
                 const data = await response.json();
                 return data.reply || data.output;
             } catch (err) {
-                alert("Server execution delay. Trying again...");
-                return null;
+                return "Server connection glitch. Trying again...";
             }
         }
 
@@ -295,7 +294,7 @@ def proxy_chat():
     messages = data.get('messages', [])
     
     if not api_key:
-        return jsonify({"reply": "System Error: Key missing."}), 400
+        return jsonify({"reply": "🔑 API Key Error: It looks like no key was entered in the app configuration panel."}), 400
         
     try:
         response = requests.post(
@@ -305,16 +304,21 @@ def proxy_chat():
                 'Authorization': f'Bearer {api_key}'
             },
             json={
-                'model': 'llama-3.3-70b-specdec',
+                'model': 'llama3-8b-8192',  # Highly reliable alternative free model
                 'messages': messages,
                 'temperature': 0.7
             },
-            timeout=30
+            timeout=20
         )
         res_data = response.json()
+        
+        # If Groq returns an error, pass its message straight to Varsha's screen
+        if 'error' in res_data:
+            return jsonify({"reply": f"❌ Server Message: {res_data['error'].get('message', 'Key validation issue.')}"})
+            
         return jsonify({"reply": res_data['choices'][0]['message']['content']})
     except Exception as e:
-        return jsonify({"reply": f"Handshake issue: {str(e)}"}), 500
+        return jsonify({"reply": f"🚨 Diagnostic Error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
